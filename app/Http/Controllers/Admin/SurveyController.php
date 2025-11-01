@@ -10,6 +10,7 @@ use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class SurveyController extends Controller
 {
@@ -116,19 +117,19 @@ class SurveyController extends Controller
                     ];
 
                     // Procesar imagen de la opción si existe
-                    if ($request->hasFile("questions.{$index}.option_images.{$optionIndex}")) {
-                        $file = $request->file("questions.{$index}.option_images.{$optionIndex}");
+                    $imageFile = $request->file("questions.{$index}.option_images.{$optionIndex}");
 
+                    if ($imageFile && $imageFile->isValid()) {
                         // Validación extra de seguridad
-                        $extension = $file->getClientOriginalExtension();
+                        $extension = $imageFile->getClientOriginalExtension();
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
                         if (in_array(strtolower($extension), $allowedExtensions)) {
-                            $mimeType = $file->getMimeType();
+                            $mimeType = $imageFile->getMimeType();
                             $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
                             if (in_array($mimeType, $allowedMimes)) {
-                                $path = $file->store('option-images', 'public');
+                                $path = $imageFile->store('option-images', 'public');
                                 $optionData['image'] = $path;
                             }
                         }
@@ -211,12 +212,19 @@ class SurveyController extends Controller
         try {
             DB::beginTransaction();
 
-            $survey->update([
+            // Preparar datos de actualización
+            $updateData = [
                 'title' => $validated['title'],
                 'description' => $validated['description'] ?? null,
                 'is_active' => $request->boolean('is_active'),
-                'show_results' => $request->boolean('show_results'),
-            ]);
+            ];
+
+            // Solo actualizar show_results si el campo existe en la tabla
+            if (Schema::hasColumn('surveys', 'show_results')) {
+                $updateData['show_results'] = $request->boolean('show_results');
+            }
+
+            $survey->update($updateData);
 
             // Actualizar banner si existe
             if ($request->hasFile('banner')) {
@@ -274,15 +282,16 @@ class SurveyController extends Controller
                     ];
 
                     // Procesar imagen de la opción si existe
-                    if ($request->hasFile("questions.{$index}.options.{$optionIndex}.image")) {
-                        $file = $request->file("questions.{$index}.options.{$optionIndex}.image");
+                    // Laravel convierte los puntos en arrays anidados automáticamente
+                    $imageFile = $request->file("questions.{$index}.options.{$optionIndex}.image");
 
+                    if ($imageFile && $imageFile->isValid()) {
                         // Validación extra de seguridad
-                        $extension = $file->getClientOriginalExtension();
+                        $extension = $imageFile->getClientOriginalExtension();
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
                         if (in_array(strtolower($extension), $allowedExtensions)) {
-                            $mimeType = $file->getMimeType();
+                            $mimeType = $imageFile->getMimeType();
                             $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
                             if (in_array($mimeType, $allowedMimes)) {
@@ -294,7 +303,7 @@ class SurveyController extends Controller
                                     }
                                 }
 
-                                $path = $file->store('option-images', 'public');
+                                $path = $imageFile->store('option-images', 'public');
                                 $optionUpdateData['image'] = $path;
                             }
                         }
