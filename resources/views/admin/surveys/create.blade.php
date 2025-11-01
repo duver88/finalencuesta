@@ -174,8 +174,8 @@ function addOption(questionIndex) {
     const optionIndex = optionCounters[questionIndex];
 
     const optionHtml = `
-        <div class="mb-2 option-row" data-option="${optionIndex}">
-            <div class="input-group">
+        <div class="mb-3 option-row" data-option="${optionIndex}">
+            <div class="input-group mb-2">
                 <span class="input-group-text bg-light">${optionIndex + 1}</span>
                 <input type="text" name="questions[${questionIndex}][options][]" required
                        placeholder="Texto de la opción"
@@ -187,6 +187,13 @@ function addOption(questionIndex) {
                 <button type="button" onclick="removeOption(this)" class="btn" style="background: linear-gradient(135deg, rgba(238, 9, 121, 0.15) 0%, rgba(255, 106, 0, 0.15) 100%); color: #ee0979; border: 1px solid rgba(238, 9, 121, 0.3);">
                     <i class="bi bi-x"></i>
                 </button>
+            </div>
+            <div class="ms-4">
+                <label class="form-label small text-muted mb-1">
+                    <i class="bi bi-image"></i> Imagen de la opción (opcional, 800x800px recomendado)
+                </label>
+                <input type="file" name="questions[${questionIndex}][option_images][]"
+                       class="form-control form-control-sm" accept="image/*">
             </div>
         </div>
     `;

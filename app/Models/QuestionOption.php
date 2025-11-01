@@ -11,6 +11,7 @@ class QuestionOption extends Model
         'option_text',
         'order',
         'color',
+        'image',
     ];
 
     // Relaciones

@@ -126,6 +126,14 @@
                                                                    id="option{{ $option->id }}"
                                                                    required>
                                                             <label class="form-check-label fw-medium" for="option{{ $option->id }}">
+                                                                @if($option->image)
+                                                                    <div class="mb-2">
+                                                                        <img src="{{ asset('storage/' . $option->image) }}"
+                                                                             alt="{{ $option->option_text }}"
+                                                                             class="img-fluid rounded shadow-sm"
+                                                                             style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                                                                    </div>
+                                                                @endif
                                                                 {{ $option->option_text }}
                                                             </label>
                                                         </div>
@@ -145,6 +153,14 @@
                                                                    value="{{ $option->id }}"
                                                                    id="option{{ $option->id }}">
                                                             <label class="form-check-label fw-medium" for="option{{ $option->id }}">
+                                                                @if($option->image)
+                                                                    <div class="mb-2">
+                                                                        <img src="{{ asset('storage/' . $option->image) }}"
+                                                                             alt="{{ $option->option_text }}"
+                                                                             class="img-fluid rounded shadow-sm"
+                                                                             style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                                                                    </div>
+                                                                @endif
                                                                 {{ $option->option_text }}
                                                             </label>
                                                         </div>

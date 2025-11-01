@@ -40,6 +40,8 @@ class SurveyController extends Controller
             'questions.*.options.*' => 'required|string|max:255',
             'questions.*.colors' => 'required|array|min:2|max:20',
             'questions.*.colors.*' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'questions.*.option_images' => 'nullable|array',
+            'questions.*.option_images.*' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
         try {
@@ -107,11 +109,32 @@ class SurveyController extends Controller
                 ]);
 
                 foreach ($questionData['options'] as $optionIndex => $optionText) {
-                    $question->options()->create([
+                    $optionData = [
                         'option_text' => $optionText,
                         'order' => $optionIndex,
                         'color' => $questionData['colors'][$optionIndex] ?? null,
-                    ]);
+                    ];
+
+                    // Procesar imagen de la opción si existe
+                    if ($request->hasFile("questions.{$index}.option_images.{$optionIndex}")) {
+                        $file = $request->file("questions.{$index}.option_images.{$optionIndex}");
+
+                        // Validación extra de seguridad
+                        $extension = $file->getClientOriginalExtension();
+                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+                        if (in_array(strtolower($extension), $allowedExtensions)) {
+                            $mimeType = $file->getMimeType();
+                            $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+                            if (in_array($mimeType, $allowedMimes)) {
+                                $path = $file->store('option-images', 'public');
+                                $optionData['image'] = $path;
+                            }
+                        }
+                    }
+
+                    $question->options()->create($optionData);
                 }
             }
 
@@ -182,6 +205,7 @@ class SurveyController extends Controller
             'questions.*.options.*.id' => 'nullable|exists:question_options,id',
             'questions.*.options.*.option_text' => 'required|string',
             'questions.*.options.*.color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'questions.*.options.*.image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
         try {
@@ -243,19 +267,44 @@ class SurveyController extends Controller
 
                 // Actualizar o crear opciones
                 foreach ($questionData['options'] as $optionIndex => $optionData) {
+                    $optionUpdateData = [
+                        'option_text' => $optionData['option_text'],
+                        'order' => $optionIndex,
+                        'color' => $optionData['color'] ?? null,
+                    ];
+
+                    // Procesar imagen de la opción si existe
+                    if ($request->hasFile("questions.{$index}.options.{$optionIndex}.image")) {
+                        $file = $request->file("questions.{$index}.options.{$optionIndex}.image");
+
+                        // Validación extra de seguridad
+                        $extension = $file->getClientOriginalExtension();
+                        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+                        if (in_array(strtolower($extension), $allowedExtensions)) {
+                            $mimeType = $file->getMimeType();
+                            $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+                            if (in_array($mimeType, $allowedMimes)) {
+                                // Si estamos actualizando una opción existente, eliminar la imagen anterior
+                                if (isset($optionData['id'])) {
+                                    $existingOption = QuestionOption::find($optionData['id']);
+                                    if ($existingOption && $existingOption->image) {
+                                        Storage::disk('public')->delete($existingOption->image);
+                                    }
+                                }
+
+                                $path = $file->store('option-images', 'public');
+                                $optionUpdateData['image'] = $path;
+                            }
+                        }
+                    }
+
                     if (isset($optionData['id'])) {
                         $option = QuestionOption::find($optionData['id']);
-                        $option->update([
-                            'option_text' => $optionData['option_text'],
-                            'order' => $optionIndex,
-                            'color' => $optionData['color'] ?? null,
-                        ]);
+                        $option->update($optionUpdateData);
                     } else {
-                        $question->options()->create([
-                            'option_text' => $optionData['option_text'],
-                            'order' => $optionIndex,
-                            'color' => $optionData['color'] ?? null,
-                        ]);
+                        $question->options()->create($optionUpdateData);
                     }
                 }
             }

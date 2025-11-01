@@ -158,27 +158,42 @@
                                             @php
                                                 $optionHasVotes = $option->votes->count() > 0;
                                             @endphp
-                                            <div class="input-group mb-2 option-row" id="option-row-{{ $qIndex }}-{{ $oIndex }}" style="cursor: move;">
-                                                <span class="input-group-text bg-light draggable-option-handle">
-                                                    <i class="bi bi-grip-vertical"></i>
-                                                </span>
-                                                <span class="input-group-text bg-light">{{ $oIndex + 1 }}</span>
-                                                <input type="hidden" name="questions[{{ $qIndex }}][options][{{ $oIndex }}][id]" value="{{ $option->id }}" class="option-id-{{ $qIndex }}-{{ $oIndex }}">
-                                                <input type="text" name="questions[{{ $qIndex }}][options][{{ $oIndex }}][option_text]"
-                                                       value="{{ old('questions.'.$qIndex.'.options.'.$oIndex.'.option_text', $option->option_text) }}"
-                                                       required placeholder="Texto de la opción" class="form-control">
-                                                <input type="color" name="questions[{{ $qIndex }}][options][{{ $oIndex }}][color]"
-                                                       class="form-control form-control-color"
-                                                       value="{{ old('questions.'.$qIndex.'.options.'.$oIndex.'.color', $option->color ?? '#3b82f6') }}"
-                                                       title="Elige un color para esta opción">
-                                                @if($optionHasVotes)
-                                                    <span class="input-group-text bg-warning text-dark" title="Esta opción tiene {{ $option->votes->count() }} voto(s)">
-                                                        <i class="bi bi-exclamation-triangle-fill"></i> {{ $option->votes->count() }}
+                                            <div class="mb-3 option-row" id="option-row-{{ $qIndex }}-{{ $oIndex }}">
+                                                <div class="input-group mb-2" style="cursor: move;">
+                                                    <span class="input-group-text bg-light draggable-option-handle">
+                                                        <i class="bi bi-grip-vertical"></i>
                                                     </span>
-                                                @endif
-                                                <button type="button" class="btn btn-danger" onclick="deleteExistingOption({{ $qIndex }}, {{ $oIndex }}, '{{ addslashes($option->option_text) }}', {{ $option->id }}, {{ $optionHasVotes ? 'true' : 'false' }}, {{ $option->votes->count() }})">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
+                                                    <span class="input-group-text bg-light">{{ $oIndex + 1 }}</span>
+                                                    <input type="hidden" name="questions[{{ $qIndex }}][options][{{ $oIndex }}][id]" value="{{ $option->id }}" class="option-id-{{ $qIndex }}-{{ $oIndex }}">
+                                                    <input type="text" name="questions[{{ $qIndex }}][options][{{ $oIndex }}][option_text]"
+                                                           value="{{ old('questions.'.$qIndex.'.options.'.$oIndex.'.option_text', $option->option_text) }}"
+                                                           required placeholder="Texto de la opción" class="form-control">
+                                                    <input type="color" name="questions[{{ $qIndex }}][options][{{ $oIndex }}][color]"
+                                                           class="form-control form-control-color"
+                                                           value="{{ old('questions.'.$qIndex.'.options.'.$oIndex.'.color', $option->color ?? '#3b82f6') }}"
+                                                           title="Elige un color para esta opción">
+                                                    @if($optionHasVotes)
+                                                        <span class="input-group-text bg-warning text-dark" title="Esta opción tiene {{ $option->votes->count() }} voto(s)">
+                                                            <i class="bi bi-exclamation-triangle-fill"></i> {{ $option->votes->count() }}
+                                                        </span>
+                                                    @endif
+                                                    <button type="button" class="btn btn-danger" onclick="deleteExistingOption({{ $qIndex }}, {{ $oIndex }}, '{{ addslashes($option->option_text) }}', {{ $option->id }}, {{ $optionHasVotes ? 'true' : 'false' }}, {{ $option->votes->count() }})">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="ms-5">
+                                                    @if($option->image)
+                                                        <div class="mb-2">
+                                                            <img src="{{ asset('storage/' . $option->image) }}" alt="Imagen de opción" class="img-thumbnail" style="max-width: 100px; max-height: 100px;">
+                                                            <small class="d-block text-muted">Imagen actual</small>
+                                                        </div>
+                                                    @endif
+                                                    <label class="form-label small text-muted mb-1">
+                                                        <i class="bi bi-image"></i> Cambiar/agregar imagen (opcional, 800x800px recomendado)
+                                                    </label>
+                                                    <input type="file" name="questions[{{ $qIndex }}][options][{{ $oIndex }}][image]"
+                                                           class="form-control form-control-sm" accept="image/*">
+                                                </div>
                                             </div>
                                         @endforeach
                                     </div>
@@ -241,22 +256,30 @@ function addNewOption(questionIndex, currentOptionCount) {
     const newOptionIndex = currentOptionCount;
 
     const newOption = document.createElement('div');
-    newOption.className = 'input-group mb-2 option-row';
-    newOption.style.cursor = 'move';
+    newOption.className = 'mb-3 option-row';
     newOption.innerHTML = `
-        <span class="input-group-text bg-light draggable-option-handle">
-            <i class="bi bi-grip-vertical"></i>
-        </span>
-        <span class="input-group-text bg-light">${newOptionIndex + 1}</span>
-        <input type="text" name="questions[${questionIndex}][options][${newOptionIndex}][option_text]"
-               required placeholder="Texto de la nueva opción" class="form-control">
-        <input type="color" name="questions[${questionIndex}][options][${newOptionIndex}][color]"
-               class="form-control form-control-color"
-               value="#3b82f6"
-               title="Elige un color para esta opción">
-        <button type="button" class="btn" style="background: linear-gradient(135deg, rgba(238, 9, 121, 0.15) 0%, rgba(255, 106, 0, 0.15) 100%); color: #ee0979; border: 1px solid rgba(238, 9, 121, 0.3);" onclick="this.parentElement.remove(); renumberOptions(${questionIndex})">
-            <i class="bi bi-trash"></i>
-        </button>
+        <div class="input-group mb-2" style="cursor: move;">
+            <span class="input-group-text bg-light draggable-option-handle">
+                <i class="bi bi-grip-vertical"></i>
+            </span>
+            <span class="input-group-text bg-light">${newOptionIndex + 1}</span>
+            <input type="text" name="questions[${questionIndex}][options][${newOptionIndex}][option_text]"
+                   required placeholder="Texto de la nueva opción" class="form-control">
+            <input type="color" name="questions[${questionIndex}][options][${newOptionIndex}][color]"
+                   class="form-control form-control-color"
+                   value="#3b82f6"
+                   title="Elige un color para esta opción">
+            <button type="button" class="btn" style="background: linear-gradient(135deg, rgba(238, 9, 121, 0.15) 0%, rgba(255, 106, 0, 0.15) 100%); color: #ee0979; border: 1px solid rgba(238, 9, 121, 0.3);" onclick="this.parentElement.parentElement.remove(); renumberOptions(${questionIndex})">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+        <div class="ms-5">
+            <label class="form-label small text-muted mb-1">
+                <i class="bi bi-image"></i> Imagen de la opción (opcional, 800x800px recomendado)
+            </label>
+            <input type="file" name="questions[${questionIndex}][options][${newOptionIndex}][image]"
+                   class="form-control form-control-sm" accept="image/*">
+        </div>
     `;
 
     container.appendChild(newOption);
