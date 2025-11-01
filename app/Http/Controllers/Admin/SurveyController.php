@@ -455,7 +455,7 @@ class SurveyController extends Controller
                 return redirect()->route('admin.surveys.show', $survey)
                     ->with('success', 'Votos actualizados exitosamente.');
             }
-
+ 
             // Ajustar personas únicas si es necesario
             // No puede haber más personas únicas que votos totales
             $actualUniqueVoters = min($desiredUniqueVoters, $totalVotesToCreate);
