@@ -538,4 +538,72 @@ class SurveyController extends Controller
                 ->withInput();
         }
     }
+
+    public function duplicate(Survey $survey)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Crear una nueva encuesta con los mismos datos
+            $newSurvey = Survey::create([
+                'title' => $survey->title . ' (Copia)',
+                'description' => $survey->description,
+                'is_active' => false, // Inicia inactiva
+                'show_results' => $survey->show_results,
+            ]);
+
+            // Copiar el banner si existe
+            if ($survey->banner) {
+                $extension = pathinfo($survey->banner, PATHINFO_EXTENSION);
+                $newBannerPath = 'banners/' . uniqid() . '.' . $extension;
+                Storage::disk('public')->copy($survey->banner, $newBannerPath);
+                $newSurvey->update(['banner' => $newBannerPath]);
+            }
+
+            // Copiar la imagen OG si existe
+            if ($survey->og_image) {
+                $extension = pathinfo($survey->og_image, PATHINFO_EXTENSION);
+                $newOgImagePath = 'og-images/' . uniqid() . '.' . $extension;
+                Storage::disk('public')->copy($survey->og_image, $newOgImagePath);
+                $newSurvey->update(['og_image' => $newOgImagePath]);
+            }
+
+            // Copiar las preguntas y opciones
+            foreach ($survey->questions as $question) {
+                $newQuestion = $newSurvey->questions()->create([
+                    'question_text' => $question->question_text,
+                    'question_type' => $question->question_type,
+                    'order' => $question->order,
+                ]);
+
+                // Copiar las opciones de la pregunta
+                foreach ($question->options as $option) {
+                    $optionData = [
+                        'option_text' => $option->option_text,
+                        'order' => $option->order,
+                        'color' => $option->color,
+                    ];
+
+                    // Copiar la imagen de la opción si existe
+                    if ($option->image) {
+                        $extension = pathinfo($option->image, PATHINFO_EXTENSION);
+                        $newImagePath = 'option-images/' . uniqid() . '.' . $extension;
+                        Storage::disk('public')->copy($option->image, $newImagePath);
+                        $optionData['image'] = $newImagePath;
+                    }
+
+                    $newQuestion->options()->create($optionData);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('admin.surveys.show', $newSurvey)
+                ->with('success', 'Encuesta duplicada exitosamente. La nueva encuesta está inactiva por defecto.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error al duplicar la encuesta: ' . $e->getMessage());
+        }
+    }
 }

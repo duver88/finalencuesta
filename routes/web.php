@@ -42,6 +42,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/surveys/{survey}/finish', [AdminSurveyController::class, 'finish'])->name('surveys.finish');
     Route::post('/surveys/{survey}/unfinish', [AdminSurveyController::class, 'unfinish'])->name('surveys.unfinish');
     Route::delete('/surveys/{survey}/reset', [AdminSurveyController::class, 'reset'])->name('surveys.reset');
+    Route::post('/surveys/{survey}/duplicate', [AdminSurveyController::class, 'duplicate'])->name('surveys.duplicate');
     Route::get('/surveys/{survey}/edit-votes', [AdminSurveyController::class, 'editVotes'])->name('surveys.votes.edit');
     Route::put('/surveys/{survey}/update-votes', [AdminSurveyController::class, 'updateVotes'])->name('surveys.votes.update');
 

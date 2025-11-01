@@ -35,6 +35,13 @@
                style="background: linear-gradient(135deg, rgba(240, 147, 251, 0.15) 0%, rgba(245, 87, 108, 0.15) 100%); color: #f093fb; border: 1px solid rgba(240, 147, 251, 0.3); padding: 0.5rem 0.875rem; border-radius: 8px; font-weight: 500;">
                 <i class="bi bi-pencil-square"></i> <span class="d-none d-md-inline">Editar Votos</span>
             </a>
+            <form action="{{ route('admin.surveys.duplicate', $survey) }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-sm"
+                        style="background: linear-gradient(135deg, rgba(255, 184, 0, 0.15) 0%, rgba(255, 143, 0, 0.15) 100%); color: #ff8f00; border: 1px solid rgba(255, 143, 0, 0.3); padding: 0.5rem 0.875rem; border-radius: 8px; font-weight: 500;">
+                    <i class="bi bi-files"></i> <span class="d-none d-md-inline">Duplicar</span>
+                </button>
+            </form>
             @if($survey->is_finished)
                 <form action="{{ route('admin.surveys.unfinish', $survey) }}" method="POST" class="d-inline">
                     @csrf
