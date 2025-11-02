@@ -35,13 +35,6 @@ class VoteFraudDetector
             'score' => 20,
         ],
 
-        // Votos con mismo idioma del navegador
-        'same_browser_language' => [
-            'limit' => 25,
-            'minutes' => 10,
-            'score' => 15,
-        ],
-
         // Ráfaga repentina de votos (spike detection)
         'vote_spike' => [
             'limit' => 50,           // Más de 50 votos
@@ -91,23 +84,14 @@ class VoteFraudDetector
             }
         }
 
-        // 4. Verificar idioma del navegador
-        if (isset($voteData['browser_language'])) {
-            $languageCheck = $this->checkSameLanguage($questionId, $voteData['browser_language']);
-            if ($languageCheck['suspicious']) {
-                $fraudScore += $this->thresholds['same_browser_language']['score'];
-                $reasons[] = $languageCheck['reason'];
-            }
-        }
-
-        // 5. Detectar ráfagas de votos (spike detection)
+        // 4. Detectar ráfagas de votos (spike detection)
         $spikeCheck = $this->checkVoteSpike($questionId);
         if ($spikeCheck['suspicious']) {
             $fraudScore += $this->thresholds['vote_spike']['score'];
             $reasons[] = $spikeCheck['reason'];
         }
 
-        // 6. Verificar dominancia anormal de una opción
+        // 5. Verificar dominancia anormal de una opción
         $dominanceCheck = $this->checkOptionDominance($questionId, $optionId);
         if ($dominanceCheck['suspicious']) {
             $fraudScore += $this->thresholds['option_dominance']['score'];
@@ -179,26 +163,6 @@ class VoteFraudDetector
         return [
             'suspicious' => $count >= $threshold['limit'],
             'reason' => "Detectados {$count} votos con la misma resolución ({$resolution}) en {$threshold['minutes']} minutos",
-            'count' => $count,
-        ];
-    }
-
-    /**
-     * Verifica votos con el mismo idioma
-     */
-    private function checkSameLanguage(int $questionId, string $language): array
-    {
-        $threshold = $this->thresholds['same_browser_language'];
-        $since = Carbon::now()->subMinutes($threshold['minutes']);
-
-        $count = Vote::where('question_id', $questionId)
-            ->where('browser_language', $language)
-            ->where('created_at', '>=', $since)
-            ->count();
-
-        return [
-            'suspicious' => $count >= $threshold['limit'],
-            'reason' => "Detectados {$count} votos con el mismo idioma en {$threshold['minutes']} minutos",
             'count' => $count,
         ];
     }
