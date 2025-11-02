@@ -544,13 +544,20 @@ class SurveyController extends Controller
         try {
             DB::beginTransaction();
 
-            // Crear una nueva encuesta con los mismos datos
-            $newSurvey = Survey::create([
+            // Preparar datos para la nueva encuesta
+            $newSurveyData = [
                 'title' => $survey->title . ' (Copia)',
                 'description' => $survey->description,
                 'is_active' => false, // Inicia inactiva
-                'show_results' => $survey->show_results,
-            ]);
+            ];
+
+            // Solo incluir show_results si la columna existe
+            if (Schema::hasColumn('surveys', 'show_results')) {
+                $newSurveyData['show_results'] = $survey->show_results;
+            }
+
+            // Crear una nueva encuesta con los mismos datos
+            $newSurvey = Survey::create($newSurveyData);
 
             // Copiar el banner si existe
             if ($survey->banner) {

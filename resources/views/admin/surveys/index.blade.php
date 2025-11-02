@@ -87,6 +87,16 @@
                                            title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        <form action="{{ route('admin.surveys.duplicate', $survey) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="btn btn-sm"
+                                                    style="background: linear-gradient(135deg, rgba(255, 184, 0, 0.15) 0%, rgba(255, 143, 0, 0.15) 100%); color: #ff8f00; border: 1px solid rgba(255, 143, 0, 0.3); padding: 0.5rem 0.75rem; border-radius: 8px; transition: all 0.2s;"
+                                                    title="Duplicar"
+                                                    onclick="return confirm('¿Deseas duplicar esta encuesta? Se creará una copia con todas las preguntas y opciones.');">
+                                                <i class="bi bi-files"></i>
+                                            </button>
+                                        </form>
                                         @if($survey->is_active)
                                             <form method="POST" action="{{ route('admin.surveys.unpublish', $survey) }}" class="d-inline">
                                                 @csrf
