@@ -166,10 +166,12 @@ class SurveyController extends Controller
                 $votedSurvey = $group->getVotedSurvey($fingerprint);
 
                 if ($votedSurvey && $votedSurvey->id !== $survey->id) {
-                    // Ya votó en otra encuesta del grupo - MOSTRAR ÉXITO pero NO contar el voto
-                    return redirect()->route('surveys.thanks', $survey->public_slug)
-                        ->with('success', '¡Gracias por tu participación!')
-                        ->with('group_restricted', true); // Flag interno
+                    // Ya votó en otra encuesta del grupo - Mostrar mensaje de restricción
+                    return view('surveys.group-restricted', [
+                        'survey' => $survey,
+                        'group' => $group,
+                        'votedSurvey' => $votedSurvey
+                    ]);
                 }
             }
         }
