@@ -20,7 +20,7 @@
         <div class="blur-circle" style="position: absolute; bottom: 30%; left: 40%; width: 450px; height: 450px; background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%); filter: blur(60px);"></div>
     </div>
 
-    <div class="container py-5 position-relative" style="z-index: 1;">
+    <div class="container survey-container position-relative" style="z-index: 1;">
         <div class="row justify-content-center">
             <div class="col-12 col-md-10 col-lg-8">
                 <!-- Card principal con diseño rojo y negro -->
@@ -40,14 +40,14 @@
                         </div>
                     @endif
 
-                    <div class="card-body p-4 p-md-5">
+                    <div class="card-body survey-card-body">
                         <!-- Título y descripción con tema rojo y negro -->
-                        <div class="text-center mb-5" style="background: #ffffff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);">
-                            <h1 class="display-5 fw-bold mb-3" style="color: #DC143C; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); letter-spacing: -0.5px;">{{ $survey->title }}</h1>
+                        <div class="text-center survey-header-section">
+                            <h1 class="survey-title">{{ $survey->title }}</h1>
                             @if($survey->description)
-                                <p class="lead" style="color: #1a1a1a;">{{ $survey->description }}</p>
+                                <p class="survey-description">{{ $survey->description }}</p>
                             @endif
-                            <hr class="my-4" style="border-color: rgba(220, 20, 60, 0.3); opacity: 0.5;">
+                            <hr class="survey-divider">
                         </div>
 
                         @if(session('error'))
@@ -102,14 +102,13 @@
                                 <input type="text" name="url_field" id="url_field" style="position:absolute;left:-9999px;width:1px;height:1px;" tabindex="-1" autocomplete="off">
 
                                 @foreach($survey->questions as $question)
-                                    <div class="mb-5" style="background: #ffffff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); border: 2px solid rgba(220, 20, 60, 0.3);">
-                                        <div class="d-flex align-items-start mb-4" style="background: #ffffff; padding: 1rem; border-radius: 10px; border: 2px solid rgba(220, 20, 60, 0.4);">
-                                            <div class="bg-gradient rounded-circle d-flex align-items-center justify-content-center me-3 shrink-0"
-                                                 style="width: 45px; height: 45px; background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%); box-shadow: 0 0 20px rgba(220, 20, 60, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.2); border: 2px solid rgba(220, 20, 60, 0.5);">
-                                                <span class="fw-bold" style="color: #ffffff; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">{{ $loop->iteration }}</span>
+                                    <div class="question-container">
+                                        <div class="question-header">
+                                            <div class="question-number">
+                                                <span>{{ $loop->iteration }}</span>
                                             </div>
                                             <div class="grow">
-                                                <h5 class="fw-semibold mb-0" style="color: #1a1a1a;">{{ $question->question_text }}</h5>
+                                                <h5 class="question-text">{{ $question->question_text }}</h5>
 
                                                 @if($question->question_type === 'single_choice')
                                                     <!-- Radio buttons para selección única -->
@@ -130,28 +129,26 @@
                                                                     background-color: {{ $option->color ?? '#0d6efd' }}08 !important;
                                                                 }
                                                             </style>
-                                                            <div class="mb-3 option-label-{{ $option->id }}"
-                                                                 style="border: 2px solid #e0e0e0; border-radius: 12px; padding: 1rem; transition: all 0.3s ease; cursor: pointer; background: #ffffff;">
-                                                                <label class="d-flex align-items-center w-100" for="option{{ $option->id }}" style="cursor: pointer; margin: 0;">
-                                                                    <input class="form-check-input shrink-0" type="radio"
+                                                            <div class="mb-3 option-label-{{ $option->id }} option-item">
+                                                                <label class="option-label-inner" for="option{{ $option->id }}">
+                                                                    <input class="form-check-input option-radio" type="radio"
                                                                            name="answers[{{ $question->id }}]"
                                                                            value="{{ $option->id }}"
                                                                            id="option{{ $option->id }}"
-                                                                           style="width: 24px; height: 24px; margin: 0; accent-color: {{ $option->color ?? '#DC143C' }};"
+                                                                           style="accent-color: {{ $option->color ?? '#DC143C' }};"
                                                                            required>
                                                                     @if($option->image)
-                                                                        <div class="shrink-0 mx-3" style="width: 80px; height: 80px; overflow: hidden; border-radius: 8px; background: #f0f0f0; border: 2px solid {{ $option->color ?? '#DC143C' }};">
+                                                                        <div class="option-image-container" style="border-color: {{ $option->color ?? '#DC143C' }};">
                                                                             <img src="{{ asset('storage/' . $option->image) }}"
                                                                                  alt="{{ $option->option_text }}"
-                                                                                 class="w-100 h-100"
+                                                                                 class="option-image"
                                                                                  loading="lazy"
                                                                                  width="80"
-                                                                                 height="80"
-                                                                                 style="object-fit: cover;">
+                                                                                 height="80">
                                                                         </div>
                                                                     @endif
-                                                                    <div class="grow">
-                                                                        <strong class="d-block" style="font-size: 1.1rem; color: #1a1a1a;">{{ $option->option_text }}</strong>
+                                                                    <div class="option-text-container">
+                                                                        <strong class="option-text">{{ $option->option_text }}</strong>
                                                                     </div>
                                                                 </label>
                                                             </div>
@@ -197,27 +194,25 @@
                                                                     background-color: {{ $option->color ?? '#0d6efd' }}08 !important;
                                                                 }
                                                             </style>
-                                                            <div class="mb-3 option-label-{{ $option->id }}"
-                                                                 style="border: 2px solid #e0e0e0; border-radius: 12px; padding: 1rem; transition: all 0.3s ease; cursor: pointer; background: #ffffff;">
-                                                                <label class="d-flex align-items-center w-100" for="option{{ $option->id }}" style="cursor: pointer; margin: 0;">
-                                                                    <input class="form-check-input shrink-0" type="checkbox"
+                                                            <div class="mb-3 option-label-{{ $option->id }} option-item">
+                                                                <label class="option-label-inner" for="option{{ $option->id }}">
+                                                                    <input class="form-check-input option-radio" type="checkbox"
                                                                            name="answers[{{ $question->id }}][]"
                                                                            value="{{ $option->id }}"
                                                                            id="option{{ $option->id }}"
-                                                                           style="width: 24px; height: 24px; margin: 0; accent-color: {{ $option->color ?? '#DC143C' }};">
+                                                                           style="accent-color: {{ $option->color ?? '#DC143C' }};">
                                                                     @if($option->image)
-                                                                        <div class="shrink-0 mx-3" style="width: 80px; height: 80px; overflow: hidden; border-radius: 8px; background: #f0f0f0; border: 2px solid {{ $option->color ?? '#DC143C' }};">
+                                                                        <div class="option-image-container" style="border-color: {{ $option->color ?? '#DC143C' }};">
                                                                             <img src="{{ asset('storage/' . $option->image) }}"
                                                                                  alt="{{ $option->option_text }}"
-                                                                                 class="w-100 h-100"
+                                                                                 class="option-image"
                                                                                  loading="lazy"
                                                                                  width="80"
-                                                                                 height="80"
-                                                                                 style="object-fit: cover;">
+                                                                                 height="80">
                                                                         </div>
                                                                     @endif
-                                                                    <div class="grow">
-                                                                        <strong class="d-block" style="font-size: 1.1rem; color: #1a1a1a;">{{ $option->option_text }}</strong>
+                                                                    <div class="option-text-container">
+                                                                        <strong class="option-text">{{ $option->option_text }}</strong>
                                                                     </div>
                                                                 </label>
                                                             </div>
@@ -663,21 +658,205 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
+/* Estilos base para elementos */
+.survey-container {
+    padding: 1.5rem 0.75rem;
+}
+
+.survey-card-body {
+    padding: 2rem 2.5rem;
+}
+
+.survey-header-section {
+    background: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    margin-bottom: 2.5rem;
+}
+
+.survey-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    color: #DC143C;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    letter-spacing: -0.5px;
+}
+
+.survey-description {
+    font-size: 1.25rem;
+    color: #1a1a1a;
+    margin-bottom: 0;
+}
+
+.survey-divider {
+    margin: 1.5rem 0;
+    border-color: rgba(220, 20, 60, 0.3);
+    opacity: 0.5;
+}
+
+.question-container {
+    background: #ffffff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(220, 20, 60, 0.3);
+    margin-bottom: 2rem;
+}
+
+.question-header {
+    display: flex;
+    align-items: start;
+    background: #ffffff;
+    padding: 1rem;
+    border-radius: 10px;
+    border: 2px solid rgba(220, 20, 60, 0.4);
+    margin-bottom: 1.5rem;
+}
+
+.question-number {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%);
+    box-shadow: 0 0 20px rgba(220, 20, 60, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(220, 20, 60, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 1rem;
+}
+
+.question-number span {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.question-text {
+    color: #1a1a1a;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.option-item {
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: #ffffff;
+}
+
+.option-label-inner {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    cursor: pointer;
+    margin: 0;
+}
+
+.option-radio {
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.option-image-container {
+    width: 80px;
+    height: 80px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #f0f0f0;
+    border: 2px solid;
+    flex-shrink: 0;
+    margin: 0 1rem;
+}
+
+.option-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.option-text-container {
+    flex: 1;
+}
+
+.option-text {
+    display: block;
+    font-size: 1.05rem;
+    color: #1a1a1a;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .display-5 {
-        font-size: 2rem;
+    .survey-container {
+        padding: 1rem 0.5rem;
     }
 
-    .lead {
+    .survey-card-body {
+        padding: 1.25rem;
+    }
+
+    .survey-header-section {
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .survey-title {
+        font-size: 1.75rem;
+    }
+
+    .survey-description {
         font-size: 1rem;
     }
 
-    .card-body {
-        padding: 1.5rem !important;
+    .question-container {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
     }
 
-    .form-check-label {
+    .question-header {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .question-number {
+        width: 38px;
+        height: 38px;
+        margin-right: 0.75rem;
+    }
+
+    .question-number span {
+        font-size: 1rem;
+    }
+
+    .question-text {
+        font-size: 1rem;
+    }
+
+    .option-item {
+        padding: 0.75rem;
+    }
+
+    .option-radio {
+        width: 20px;
+        height: 20px;
+    }
+
+    .option-image-container {
+        width: 70px;
+        height: 70px;
+        margin: 0 0.75rem;
+    }
+
+    .option-text {
         font-size: 0.95rem;
     }
 
@@ -693,14 +872,74 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 @media (max-width: 576px) {
-    .card-img-top {
-        height: 150px !important;
+    .survey-container {
+        padding: 0.5rem 0.25rem;
     }
 
-    .bg-primary.rounded-circle {
-        width: 35px !important;
-        height: 35px !important;
+    .survey-card-body {
+        padding: 1rem;
+    }
+
+    .survey-header-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .survey-title {
+        font-size: 1.5rem;
+    }
+
+    .survey-description {
         font-size: 0.9rem;
+    }
+
+    .question-container {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .question-header {
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .question-number {
+        width: 32px;
+        height: 32px;
+        margin-right: 0.5rem;
+    }
+
+    .question-number span {
+        font-size: 0.9rem;
+    }
+
+    .question-text {
+        font-size: 0.9rem;
+        line-height: 1.3;
+    }
+
+    .option-item {
+        padding: 0.6rem;
+    }
+
+    .option-radio {
+        width: 18px;
+        height: 18px;
+    }
+
+    .option-image-container {
+        width: 60px;
+        height: 60px;
+        margin: 0 0.5rem;
+    }
+
+    .option-text {
+        font-size: 0.85rem;
+        line-height: 1.3;
+    }
+
+    .card-img-top {
+        height: 150px !important;
     }
 
     /* Banner extra pequeño */
