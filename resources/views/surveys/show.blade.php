@@ -439,75 +439,78 @@ function setCookie(name, value, days) {
     document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Strict";
 }
 
-// Generar fingerprint avanzado único con TRIPLE PROTECCIÓN
+// Generar fingerprint avanzado único BASADO EN HARDWARE
+// Este fingerprint será IDÉNTICO incluso en modo incógnito o diferentes navegadores
 function generateFingerprint() {
-    // 1. Intentar recuperar de COOKIE (persiste incluso en incógnito si no se cierra)
-    let fingerprint = getCookie('device_fingerprint');
+    const nav = window.navigator;
+    const screen = window.screen;
 
-    // 2. Si no hay en cookie, intentar desde localStorage
-    if (!fingerprint) {
-        fingerprint = localStorage.getItem('survey_fingerprint');
+    // DATOS DE HARDWARE QUE NO CAMBIAN (sin importar navegador o modo incógnito)
+    const hardwareData = [
+        // Características de pantalla (únicas por dispositivo físico)
+        screen.width + 'x' + screen.height,
+        screen.availWidth + 'x' + screen.availHeight,
+        screen.colorDepth,
+        screen.pixelDepth,
+        window.devicePixelRatio || 1,
+
+        // CPU y hardware
+        nav.hardwareConcurrency || 'unknown',
+        nav.deviceMemory || 'unknown',
+        nav.maxTouchPoints || 0,
+
+        // Plataforma (Windows, Linux, Mac)
+        nav.platform,
+
+        // Zona horaria
+        new Date().getTimezoneOffset(),
+
+        // Idioma del sistema (no del navegador)
+        nav.language,
+        nav.languages ? nav.languages[0] : ''
+    ].join('|');
+
+    // Canvas fingerprint (ÚNICO por tarjeta gráfica y drivers)
+    const canvasHash = hashString(getCanvasFingerprint());
+
+    // WebGL fingerprint (ÚNICO por GPU)
+    const webglHash = hashString(getWebGLFingerprint());
+
+    // Fuentes instaladas en el SISTEMA (no del navegador)
+    const fontsHash = hashString(getFontsFingerprint());
+
+    // Audio fingerprint (ÚNICO por hardware de audio)
+    const audioHash = hashString(getAudioFingerprint());
+
+    // Combinar SOLO datos de hardware (ignoramos User-Agent que cambia por navegador)
+    const combinedData = hardwareData + '|' + canvasHash + '|' + webglHash + '|' +
+                         fontsHash + '|' + audioHash;
+
+    // Generar hash DETERMINÍSTICO (siempre el mismo para el mismo hardware)
+    const hardwareFingerprint = 'hw_' + hashString(combinedData);
+
+    // IMPORTANTE: Intentar recuperar ID persistente de cookies/storage
+    let persistentId = getCookie('device_fingerprint') || localStorage.getItem('survey_fingerprint');
+
+    // Si existe un ID persistente con el mismo hardware, usarlo
+    if (persistentId && persistentId.includes(hardwareFingerprint)) {
+        return persistentId;
     }
 
-    // 3. Si aún no hay fingerprint, generarlo desde cero
-    if (!fingerprint) {
-        const nav = window.navigator;
-        const screen = window.screen;
+    // Si no, crear nuevo ID único combinando hardware + timestamp
+    const uniqueId = hardwareFingerprint + '_' + Date.now().toString(36);
 
-        // Recopilar TODOS los datos del dispositivo
-        const basicData = [
-            nav.userAgent,
-            nav.language,
-            nav.languages ? nav.languages.join(',') : '',
-            nav.platform,
-            nav.hardwareConcurrency || 'unknown',
-            screen.colorDepth,
-            screen.width + 'x' + screen.height,
-            screen.availWidth + 'x' + screen.availHeight,
-            screen.pixelDepth,
-            new Date().getTimezoneOffset(),
-            !!window.sessionStorage,
-            !!window.localStorage,
-            !!window.indexedDB,
-            typeof(window.openDatabase) !== 'undefined',
-            nav.cookieEnabled,
-            nav.doNotTrack || 'unknown',
-            nav.maxTouchPoints || 0,
-            window.devicePixelRatio || 1
-        ].join('|');
-
-        // Datos avanzados
-        const canvasHash = hashString(getCanvasFingerprint());
-        const webglHash = hashString(getWebGLFingerprint());
-        const fontsHash = hashString(getFontsFingerprint());
-        const pluginsHash = hashString(getPluginsFingerprint());
-        const hardwareHash = hashString(getHardwareFingerprint());
-        const audioHash = hashString(getAudioFingerprint());
-
-        // Combinar todos los datos
-        const combinedData = basicData + '|' + canvasHash + '|' + webglHash + '|' +
-                           fontsHash + '|' + pluginsHash + '|' + hardwareHash + '|' + audioHash;
-
-        // Generar hash final
-        const finalHash = hashString(combinedData);
-        fingerprint = 'fp_' + finalHash + '_' + Date.now().toString(36);
-    }
-
-    // GUARDAR EN TRIPLE UBICACIÓN para máxima persistencia
-    // 1. LocalStorage (se borra en incógnito al cerrar)
+    // GUARDAR para persistencia
     try {
-        localStorage.setItem('survey_fingerprint', fingerprint);
+        localStorage.setItem('survey_fingerprint', uniqueId);
     } catch (e) {
         console.log('LocalStorage no disponible');
     }
 
-    // 2. Cookie de 365 días (MUY PERSISTENTE - incluso sobrevive a limpiezas parciales)
-    setCookie('device_fingerprint', fingerprint, 365);
+    setCookie('device_fingerprint', uniqueId, 365);
+    setCookie('survey_{{ $survey->id }}_fp', uniqueId, 365);
 
-    // 3. Cookie específica de esta encuesta
-    setCookie('survey_{{ $survey->id }}_fp', fingerprint, 365);
-
-    return fingerprint;
+    return uniqueId;
 }
 
 // Función auxiliar para generar hash de strings

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Survey;
 use App\Models\SurveyToken;
 use App\Models\Vote;
+use App\Services\DeviceFingerprintMatcher;
 use App\Services\VoteFraudDetector;
 use App\Services\VoteRateLimiter;
 use Illuminate\Http\Request;
@@ -75,15 +76,19 @@ class SurveyController extends Controller
                 ->with('info', 'Este enlace ya fue utilizado anteriormente.');
         }
 
-        // Verificar si ya votó (solo por fingerprint para permitir múltiples usuarios en la misma red)
+        // Verificar si ya votó usando detector avanzado de dispositivos
         $fingerprint = $request->cookie('survey_fingerprint');
+        $deviceMatcher = new DeviceFingerprintMatcher();
 
-        $hasVoted = false;
-        if ($fingerprint) {
-            $hasVoted = Vote::where('survey_id', $survey->id)
-                ->where('fingerprint', $fingerprint)
-                ->exists();
-        }
+        $deviceData = [
+            'fingerprint' => $fingerprint,
+            'user_agent' => $request->userAgent(),
+            'platform' => $request->header('Sec-CH-UA-Platform') ?? $request->input('platform'),
+            'screen_resolution' => $request->input('screen_resolution'),
+            'hardware_concurrency' => $request->input('hardware_concurrency')
+        ];
+
+        $hasVoted = $deviceMatcher->hasDeviceVotedInSurvey($survey->id, $deviceData);
 
         // Pasar el token a la vista
         $token = $tokenString;
@@ -129,31 +134,73 @@ class SurveyController extends Controller
         }
 
         // Verificar que el token existe y obtener su estado
-        $tokenRecord = SurveyToken::where('token', $tokenString)
-            ->where('survey_id', $survey->id)
-            ->first();
+        $tokenRecord = SurveyToken::where('token', $tokenString)->first();
 
-        // Verificar si el token ya fue usado
         $hasVoted = false;
-        if ($tokenRecord && $tokenRecord->used) {
-            $hasVoted = true;
+
+        // Si el token existe y ya fue usado
+        if ($tokenRecord && $tokenRecord->status === 'used') {
+            // Verificar si el token pertenece a ESTA encuesta
+            if ($tokenRecord->survey_id === $survey->id) {
+                // El token es de esta encuesta - mostrar como votado
+                $tokenRecord->incrementAttempt();
+                $hasVoted = true;
+                $token = $tokenString;
+                return view('surveys.show', compact('survey', 'hasVoted', 'token'))
+                    ->with('info', 'Este enlace ya fue utilizado anteriormente.');
+            } else {
+                // El token es de OTRA encuesta del grupo - verificar si pertenece al mismo grupo
+                $tokenSurvey = Survey::find($tokenRecord->survey_id);
+                if ($tokenSurvey && $tokenSurvey->survey_group_id === $survey->survey_group_id) {
+                    // Token de otra encuesta del MISMO grupo - mostrar como votado sin contar voto
+                    $tokenRecord->incrementAttempt();
+                    $hasVoted = true;
+                    $token = $tokenString;
+                    return view('surveys.show', compact('survey', 'hasVoted', 'token'))
+                        ->with('info', 'Ya has votado en otra encuesta de este grupo.');
+                }
+            }
         }
 
-        // Generar fingerprint del dispositivo actual (mismo que en el vote)
-        $fingerprint = $request->input('fingerprint', session('fingerprint', ''));
+        // Verificar si ya votó usando detector avanzado de dispositivos
+        $fingerprint = $request->cookie('survey_fingerprint');
+        $deviceMatcher = new DeviceFingerprintMatcher();
+
+        $deviceData = [
+            'fingerprint' => $fingerprint,
+            'user_agent' => $request->userAgent(),
+            'platform' => $request->header('Sec-CH-UA-Platform') ?? $request->input('platform'),
+            'screen_resolution' => $request->input('screen_resolution'),
+            'hardware_concurrency' => $request->input('hardware_concurrency')
+        ];
 
         // VALIDACIÓN DE GRUPO: Si el grupo tiene restricción de votación
-        if ($group->restrict_voting && $fingerprint) {
-            $votedSurvey = $group->getVotedSurvey($fingerprint);
+        if ($group->restrict_voting) {
+            // Verificar si ya votó en ESTA encuesta
+            $hasVotedInThisSurvey = $deviceMatcher->hasDeviceVotedInSurvey($survey->id, $deviceData);
 
-            if ($votedSurvey && $votedSurvey->id !== $survey->id) {
-                // Ya votó en otra encuesta del grupo - Mostrar mensaje de restricción
-                return view('surveys.group-restricted', [
-                    'survey' => $survey,
-                    'group' => $group,
-                    'votedSurvey' => $votedSurvey
-                ]);
+            if ($hasVotedInThisSurvey) {
+                $hasVoted = true;
+                $token = $tokenString;
+                return view('surveys.show', compact('survey', 'hasVoted', 'token'))
+                    ->with('info', 'Ya has votado en esta encuesta.');
             }
+
+            // Verificar si ya votó en OTRA encuesta del grupo
+            if ($fingerprint) {
+                $votedSurvey = $group->getVotedSurvey($fingerprint);
+
+                if ($votedSurvey && $votedSurvey->id !== $survey->id) {
+                    // Ya votó en otra encuesta del grupo - Mostrar como votado
+                    $hasVoted = true;
+                    $token = $tokenString;
+                    return view('surveys.show', compact('survey', 'hasVoted', 'token'))
+                        ->with('info', 'Ya has votado en otra encuesta de este grupo.');
+                }
+            }
+        } else {
+            // Si no hay restricción de grupo, solo verificar si votó en esta encuesta
+            $hasVoted = $deviceMatcher->hasDeviceVotedInSurvey($survey->id, $deviceData);
         }
 
         $token = $tokenString;
@@ -211,9 +258,7 @@ class SurveyController extends Controller
                 ->with('success', '¡Gracias por tu participación!');
         }
 
-        $tokenRecord = SurveyToken::where('token', $tokenString)
-            ->where('survey_id', $survey->id)
-            ->first();
+        $tokenRecord = SurveyToken::where('token', $tokenString)->first();
 
         // ===================================================================
         // VALIDACIÓN PRINCIPAL: 1 TOKEN = 1 VOTO (sin importar el dispositivo)
@@ -230,8 +275,41 @@ class SurveyController extends Controller
                 ->with('success', '¡Gracias por tu participación!');
         }
 
+        // ===================================================================
+        // VALIDACIÓN DE TOKEN DE ENCUESTA: Verificar que el token pertenece a ESTA encuesta
+        // ===================================================================
+        if ($tokenRecord->survey_id !== $survey->id) {
+            // Token de otra encuesta - NO contar el voto
+            $tokenRecord->incrementAttempt();
+
+            // SIEMPRE mostrar éxito para no revelar el problema
+            return redirect()->route('surveys.thanks', $survey->public_slug)
+                ->with('success', '¡Gracias por tu participación!');
+        }
+
         // TOKEN VÁLIDO - Incrementar intentos del token
         $tokenRecord->incrementAttempt();
+
+        // ===================================================================
+        // VALIDACIÓN DE DISPOSITIVO: Detectar si el mismo dispositivo físico ya votó
+        // Esto previene votos duplicados desde modo incógnito o diferentes navegadores
+        // ===================================================================
+        $deviceMatcher = new DeviceFingerprintMatcher();
+
+        $currentDeviceData = [
+            'fingerprint' => $fingerprint,
+            'user_agent' => $deviceData['user_agent'] ?? $request->userAgent(),
+            'platform' => $deviceData['platform'] ?? null,
+            'screen_resolution' => $deviceData['screen_resolution'] ?? null,
+            'hardware_concurrency' => $deviceData['hardware_concurrency'] ?? null
+        ];
+
+        // Verificar si este dispositivo ya votó en ESTA encuesta
+        if ($deviceMatcher->hasDeviceVotedInSurvey($survey->id, $currentDeviceData)) {
+            // Ya votó desde este dispositivo - MOSTRAR ÉXITO pero NO contar el voto
+            return redirect()->route('surveys.thanks', $survey->public_slug)
+                ->with('success', '¡Gracias por tu participación!');
+        }
 
         // ===================================================================
         // VALIDACIÓN DE GRUPO: Si la encuesta pertenece a un grupo con restricción,
@@ -245,12 +323,9 @@ class SurveyController extends Controller
                 $votedSurvey = $group->getVotedSurvey($fingerprint);
 
                 if ($votedSurvey && $votedSurvey->id !== $survey->id) {
-                    // Ya votó en otra encuesta del grupo - Mostrar mensaje de restricción
-                    return view('surveys.group-restricted', [
-                        'survey' => $survey,
-                        'group' => $group,
-                        'votedSurvey' => $votedSurvey
-                    ]);
+                    // Ya votó en otra encuesta del grupo - MOSTRAR ÉXITO pero NO contar el voto
+                    return redirect()->route('surveys.thanks', $survey->public_slug)
+                        ->with('success', '¡Gracias por tu participación!');
                 }
             }
         }

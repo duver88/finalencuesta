@@ -38,8 +38,55 @@ class TokenRedirectController extends Controller
         }
 
         // ========================================================================
+        // DETECCIÓN AVANZADA: Buscar si este dispositivo ya votó en ESTA encuesta
+        // Comparar por características de hardware (User-Agent, etc.)
+        // ========================================================================
+        $fingerprint = $request->cookie('survey_fingerprint');
+
+        // Primero verificar por fingerprint si existe
+        if ($fingerprint) {
+            $previousVote = \App\Models\Vote::where('survey_id', $survey->id)
+                ->where('fingerprint', $fingerprint)
+                ->where('is_valid', true)
+                ->first();
+
+            if ($previousVote && $previousVote->survey_token_id) {
+                // Ya votó - Reusar el MISMO token
+                $usedToken = \App\Models\SurveyToken::find($previousVote->survey_token_id);
+
+                if ($usedToken) {
+                    return redirect()->route('surveys.show', [
+                        'publicSlug' => $publicSlug,
+                        'token' => $usedToken->token
+                    ]);
+                }
+            }
+        }
+
+        // Si no hay fingerprint, buscar por User-Agent (detección de dispositivo)
+        $userAgent = $request->userAgent();
+        if ($userAgent) {
+            $previousVote = \App\Models\Vote::where('survey_id', $survey->id)
+                ->where('is_valid', true)
+                ->where('user_agent', 'LIKE', '%' . substr($userAgent, 0, 50) . '%')
+                ->first();
+
+            if ($previousVote && $previousVote->survey_token_id) {
+                // Ya votó - Reusar el MISMO token
+                $usedToken = \App\Models\SurveyToken::find($previousVote->survey_token_id);
+
+                if ($usedToken) {
+                    return redirect()->route('surveys.show', [
+                        'publicSlug' => $publicSlug,
+                        'token' => $usedToken->token
+                    ]);
+                }
+            }
+        }
+
+        // ========================================================================
         // SISTEMA DE POOL DE TOKENS: Usar tokens pre-generados del pool
-        // Solo si NO viene un token en la URL
+        // Solo si NO viene un token en la URL Y NO ha votado antes
         // ========================================================================
 
         // Intentar asignar un token disponible del pool (con bloqueo para evitar condiciones de carrera)
@@ -121,6 +168,47 @@ class TokenRedirectController extends Controller
         }
 
         // ========================================================================
+        // VALIDACIÓN DE GRUPO: Si ya votó en el grupo, reusar el mismo token
+        // ========================================================================
+        $fingerprint = $request->cookie('survey_fingerprint');
+
+        if ($group->restrict_voting && $fingerprint) {
+            // Verificar si ya votó en alguna encuesta del grupo
+            $usedToken = $group->getUsedTokenByFingerprint($fingerprint);
+
+            if ($usedToken) {
+                // Redirigir con el MISMO token que ya usó (no dar uno nuevo)
+                return redirect()->route('surveys.show.group', [
+                    'groupSlug' => $groupSlug,
+                    'publicSlug' => $publicSlug,
+                    'token' => $usedToken->token
+                ]);
+            }
+        }
+
+        // ========================================================================
+        // DETECCIÓN AVANZADA: Buscar si este dispositivo ya votó (sin fingerprint)
+        // Comparar por características de hardware (User-Agent, etc.)
+        // ========================================================================
+        $deviceMatcher = new \App\Services\DeviceFingerprintMatcher();
+
+        // Buscar votos previos de este dispositivo en CUALQUIER encuesta del grupo
+        $previousVote = $this->findPreviousVoteInGroup($group->id, $request, $deviceMatcher);
+
+        if ($previousVote && $previousVote->survey_token_id) {
+            // Ya votó antes - Reusar el MISMO token
+            $usedToken = \App\Models\SurveyToken::find($previousVote->survey_token_id);
+
+            if ($usedToken) {
+                return redirect()->route('surveys.show.group', [
+                    'groupSlug' => $groupSlug,
+                    'publicSlug' => $publicSlug,
+                    'token' => $usedToken->token
+                ]);
+            }
+        }
+
+        // ========================================================================
         // SISTEMA DE POOL DE TOKENS: Usar tokens pre-generados del pool
         // ========================================================================
 
@@ -171,5 +259,26 @@ class TokenRedirectController extends Controller
                 'publicSlug' => $publicSlug
             ])->with('error', 'Ocurrió un error al procesar tu solicitud.');
         }
+    }
+
+    /**
+     * Buscar voto previo de este dispositivo en el grupo
+     */
+    private function findPreviousVoteInGroup(int $groupId, Request $request, $deviceMatcher)
+    {
+        $userAgent = $request->userAgent();
+
+        if (!$userAgent) {
+            return null;
+        }
+
+        // Buscar votos en encuestas de este grupo con User-Agent similar
+        return \App\Models\Vote::join('questions', 'votes.question_id', '=', 'questions.id')
+            ->join('surveys', 'questions.survey_id', '=', 'surveys.id')
+            ->where('surveys.survey_group_id', $groupId)
+            ->where('votes.is_valid', true)
+            ->where('votes.user_agent', 'LIKE', '%' . substr($userAgent, 0, 50) . '%')
+            ->select('votes.*')
+            ->first();
     }
 }

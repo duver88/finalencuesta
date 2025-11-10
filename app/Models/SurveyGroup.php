@@ -112,4 +112,24 @@ class SurveyGroup extends Model
 
         return $survey;
     }
+
+    /**
+     * Obtener el token que fue usado por un fingerprint en el grupo
+     */
+    public function getUsedTokenByFingerprint(string $fingerprint): ?SurveyToken
+    {
+        if (!$this->restrict_voting) {
+            return null;
+        }
+
+        // Buscar el token usado por este fingerprint en cualquier encuesta del grupo
+        return SurveyToken::join('surveys', 'survey_tokens.survey_id', '=', 'surveys.id')
+            ->join('votes', 'survey_tokens.id', '=', 'votes.survey_token_id')
+            ->where('surveys.survey_group_id', $this->id)
+            ->where('votes.fingerprint', $fingerprint)
+            ->where('votes.is_valid', true)
+            ->where('survey_tokens.status', 'used')
+            ->select('survey_tokens.*')
+            ->first();
+    }
 }
