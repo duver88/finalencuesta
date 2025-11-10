@@ -190,7 +190,7 @@
                                 <div>
                                     <h6 class="fw-bold mb-2">Voto registrado exitosamente</h6>
                                     <p class="mb-0">
-                                        Tu voto ha sido registrado correctamente. Los resultados de esta encuesta no están disponibles públicamente.
+                                        Tu voto ha sido registrado correctamente. 
                                     </p>
                                 </div>
                             </div>
