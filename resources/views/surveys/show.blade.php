@@ -85,6 +85,7 @@
                             <form method="POST" action="{{ route('surveys.vote', $survey->public_slug) }}" id="voteForm">
                                 @csrf
                                 <input type="hidden" name="fingerprint" id="fingerprint">
+                                <input type="hidden" name="device_fingerprint" id="device_fingerprint">
 
                                 @if(isset($token) && $token)
                                     <input type="hidden" name="token" value="{{ $token }}">
@@ -271,6 +272,9 @@
         </div>
     </div>
 </div>
+
+<!-- FingerprintJS -->
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
 
 <script>
 // ============================================
@@ -569,6 +573,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (fingerprintInput) {
         fingerprintInput.value = fingerprint;
+
+        // Generar huella digital del dispositivo con FingerprintJS
+        FingerprintJS.load().then(fp => {
+            fp.get().then(result => {
+                const deviceFingerprintInput = document.getElementById('device_fingerprint');
+                if (deviceFingerprintInput) {
+                    deviceFingerprintInput.value = result.visitorId;
+                }
+            });
+        });
 
         // Guardar datos del dispositivo para detección inteligente
         const nav = window.navigator;

@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(php artisan make:migration:*)",
-      "Bash(php artisan make:command:*)"
+      "Bash(php artisan make:command:*)",
+      "Bash(npm install:*)",
+      "Bash(php artisan migrate:*)"
     ],
     "deny": [],
     "ask": []

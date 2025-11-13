@@ -508,6 +508,32 @@ class TokenRedirectController extends Controller
             }
         }
 
+        // Obtener huella digital del dispositivo
+        $deviceFingerprint = $request->input('deviceFingerprint');
+
+        // Verificar si este dispositivo ya votó (previene votación en modo incógnito)
+        if ($deviceFingerprint) {
+            $previousDeviceVote = \App\Models\Vote::where('survey_id', $survey->id)
+                ->where('device_fingerprint', $deviceFingerprint)
+                ->where('is_valid', true)
+                ->first();
+
+            if ($previousDeviceVote && $previousDeviceVote->survey_token_id) {
+                // Este dispositivo ya votó - redirigir con el mismo token usado
+                $usedToken = \App\Models\SurveyToken::find($previousDeviceVote->survey_token_id);
+                if ($usedToken) {
+                    return response()->json([
+                        'success' => true,
+                        'already_voted' => true,
+                        'redirect_url' => route('surveys.show', [
+                            'publicSlug' => $publicSlug,
+                            'token' => $usedToken->token
+                        ])
+                    ]);
+                }
+            }
+        }
+
         // Liberar reservas expiradas primero
         SurveyToken::releaseExpiredReservations();
 
@@ -545,7 +571,7 @@ class TokenRedirectController extends Controller
             }
 
             // RESERVAR el token para esta sesión por 5 minutos
-            $token->reserve($sessionId);
+            $token->reserve($sessionId, $deviceFingerprint);
             $token->user_agent = $request->userAgent();
             $token->save();
 
@@ -607,6 +633,33 @@ class TokenRedirectController extends Controller
             }
         }
 
+        // Obtener huella digital del dispositivo
+        $deviceFingerprint = $request->input('deviceFingerprint');
+
+        // Verificar si este dispositivo ya votó (previene votación en modo incógnito)
+        if ($deviceFingerprint) {
+            $previousDeviceVote = \App\Models\Vote::where('survey_id', $survey->id)
+                ->where('device_fingerprint', $deviceFingerprint)
+                ->where('is_valid', true)
+                ->first();
+
+            if ($previousDeviceVote && $previousDeviceVote->survey_token_id) {
+                // Este dispositivo ya votó - redirigir con el mismo token usado
+                $usedToken = \App\Models\SurveyToken::find($previousDeviceVote->survey_token_id);
+                if ($usedToken) {
+                    return response()->json([
+                        'success' => true,
+                        'already_voted' => true,
+                        'redirect_url' => route('surveys.show.group', [
+                            'groupSlug' => $groupSlug,
+                            'publicSlug' => $publicSlug,
+                            'token' => $usedToken->token
+                        ])
+                    ]);
+                }
+            }
+        }
+
         // Liberar reservas expiradas primero
         SurveyToken::releaseExpiredReservations();
 
@@ -643,7 +696,7 @@ class TokenRedirectController extends Controller
             }
 
             // RESERVAR el token para esta sesión por 5 minutos
-            $token->reserve($sessionId);
+            $token->reserve($sessionId, $deviceFingerprint);
             $token->user_agent = $request->userAgent();
             $token->save();
 

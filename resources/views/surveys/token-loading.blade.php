@@ -200,42 +200,53 @@
         </div>
     </div>
 
+    <!-- FingerprintJS -->
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+
     <script>
-        // Esperar 1 segundo antes de asignar el token
-        setTimeout(function() {
-            // Hacer petición AJAX para obtener el token
-            fetch('{{ route("api.assign-token", ["publicSlug" => $publicSlug]) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    @if(isset($groupSlug))
-                    groupSlug: '{{ $groupSlug }}'
-                    @endif
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.redirect_url) {
-                    // Redirigir a la encuesta con el token asignado
-                    window.location.href = data.redirect_url;
-                } else {
-                    // Si no hay tokens disponibles, mostrar página de no disponible
-                    window.location.href = data.redirect_url || '{{ route("surveys.unavailable") }}';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // En caso de error, redirigir sin token
-                @if(isset($groupSlug))
-                window.location.href = '{{ route("surveys.show.group", ["groupSlug" => $groupSlug, "publicSlug" => $publicSlug]) }}';
-                @else
-                window.location.href = '{{ route("surveys.show", ["publicSlug" => $publicSlug]) }}';
-                @endif
+        // Generar huella digital del dispositivo primero
+        FingerprintJS.load().then(fp => {
+            fp.get().then(result => {
+                const deviceFingerprint = result.visitorId;
+
+                // Esperar 1 segundo antes de asignar el token
+                setTimeout(function() {
+                    // Hacer petición AJAX para obtener el token
+                    fetch('{{ route("api.assign-token", ["publicSlug" => $publicSlug]) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            @if(isset($groupSlug))
+                            groupSlug: '{{ $groupSlug }}',
+                            @endif
+                            deviceFingerprint: deviceFingerprint
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.redirect_url) {
+                            // Redirigir a la encuesta con el token asignado
+                            window.location.href = data.redirect_url;
+                        } else {
+                            // Si no hay tokens disponibles, mostrar página de no disponible
+                            window.location.href = data.redirect_url || '{{ route("surveys.unavailable") }}';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        // En caso de error, redirigir sin token
+                        @if(isset($groupSlug))
+                        window.location.href = '{{ route("surveys.show.group", ["groupSlug" => $groupSlug, "publicSlug" => $publicSlug]) }}';
+                        @else
+                        window.location.href = '{{ route("surveys.show", ["publicSlug" => $publicSlug]) }}';
+                        @endif
+                    });
+                }, 1000); // 1 segundo de delay
             });
-        }, 1000); // 1 segundo de delay
+        });
     </script>
 </body>
 </html>

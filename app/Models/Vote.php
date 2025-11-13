@@ -13,6 +13,7 @@ class Vote extends Model
         'question_option_id',
         'ip_address',
         'fingerprint',
+        'device_fingerprint',
         'user_agent',
         'platform',
         'screen_resolution',

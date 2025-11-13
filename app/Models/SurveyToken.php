@@ -20,6 +20,7 @@ class SurveyToken extends Model
         'last_attempt_at',
         'reserved_at',
         'reserved_by_session',
+        'reserved_by_device',
         'reservation_expires_at'
     ];
 
@@ -57,6 +58,7 @@ class SurveyToken extends Model
             // Limpiar campos de reserva cuando se usa el token
             'reserved_at' => null,
             'reserved_by_session' => null,
+            'reserved_by_device' => null,
             'reservation_expires_at' => null
         ]);
     }
@@ -86,12 +88,13 @@ class SurveyToken extends Model
     /**
      * Reservar el token para una sesión específica por 5 minutos
      */
-    public function reserve(string $sessionId): void
+    public function reserve(string $sessionId, ?string $deviceFingerprint = null): void
     {
         $this->update([
             'status' => 'reserved',
             'reserved_at' => now(),
             'reserved_by_session' => $sessionId,
+            'reserved_by_device' => $deviceFingerprint,
             'reservation_expires_at' => now()->addMinutes(5)
         ]);
     }
@@ -113,6 +116,7 @@ class SurveyToken extends Model
             'status' => 'pending',
             'reserved_at' => null,
             'reserved_by_session' => null,
+            'reserved_by_device' => null,
             'reservation_expires_at' => null
         ]);
     }
@@ -140,6 +144,7 @@ class SurveyToken extends Model
                 'status' => 'pending',
                 'reserved_at' => null,
                 'reserved_by_session' => null,
+                'reserved_by_device' => null,
                 'reservation_expires_at' => null
             ]);
     }

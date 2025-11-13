@@ -222,6 +222,7 @@ class SurveyController extends Controller
             'answers' => 'required|array|min:1|max:50',
             'answers.*' => 'required|exists:question_options,id',
             'fingerprint' => 'required|string|max:100',
+            'device_fingerprint' => 'nullable|string|max:100',
             'token' => 'nullable|string|max:100',
             'device_data' => 'nullable|array',
             'device_data.user_agent' => 'nullable|string|max:500',
@@ -246,6 +247,7 @@ class SurveyController extends Controller
 
         $ipAddress = $request->ip();
         $fingerprint = $request->input('fingerprint') ?? Str::random(40);
+        $deviceFingerprint = $request->input('device_fingerprint');
         $deviceData = $request->input('device_data', []);
         $tokenString = $request->input('token');
 
@@ -380,6 +382,7 @@ class SurveyController extends Controller
                     'question_option_id' => $optionId,
                     'ip_address' => $ipAddress,
                     'fingerprint' => $fingerprint,
+                    'device_fingerprint' => $deviceFingerprint,
                     'user_agent' => $deviceData['user_agent'] ?? null,
                     'platform' => $deviceData['platform'] ?? null,
                     'screen_resolution' => $deviceData['screen_resolution'] ?? null,
