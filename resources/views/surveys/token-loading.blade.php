@@ -204,49 +204,73 @@
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
 
     <script>
-        // Generar huella digital del dispositivo primero
-        FingerprintJS.load().then(fp => {
-            fp.get().then(result => {
-                const deviceFingerprint = result.visitorId;
+        console.log('Iniciando proceso de asignación de token...');
 
-                // Esperar 1 segundo antes de asignar el token
-                setTimeout(function() {
-                    // Hacer petición AJAX para obtener el token
-                    fetch('{{ route("api.assign-token", ["publicSlug" => $publicSlug]) }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({
-                            @if(isset($groupSlug))
-                            groupSlug: '{{ $groupSlug }}',
-                            @endif
-                            deviceFingerprint: deviceFingerprint
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.redirect_url) {
-                            // Redirigir a la encuesta con el token asignado
-                            window.location.href = data.redirect_url;
-                        } else {
-                            // Si no hay tokens disponibles, mostrar página de no disponible
-                            window.location.href = data.redirect_url || '{{ route("surveys.unavailable") }}';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        // En caso de error, redirigir sin token
-                        @if(isset($groupSlug))
-                        window.location.href = '{{ route("surveys.show.group", ["groupSlug" => $groupSlug, "publicSlug" => $publicSlug]) }}';
-                        @else
-                        window.location.href = '{{ route("surveys.show", ["publicSlug" => $publicSlug]) }}';
-                        @endif
-                    });
-                }, 1000); // 1 segundo de delay
+        // Función para asignar el token
+        function assignToken(deviceFingerprint = null) {
+            console.log('Asignando token con deviceFingerprint:', deviceFingerprint);
+
+            fetch('{{ route("api.assign-token", ["publicSlug" => $publicSlug]) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    @if(isset($groupSlug))
+                    groupSlug: '{{ $groupSlug }}',
+                    @endif
+                    deviceFingerprint: deviceFingerprint
+                })
+            })
+            .then(response => {
+                console.log('Respuesta recibida:', response);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos:', data);
+                if (data.success && data.redirect_url) {
+                    console.log('Redirigiendo a:', data.redirect_url);
+                    window.location.href = data.redirect_url;
+                } else {
+                    console.log('No hay tokens disponibles');
+                    window.location.href = data.redirect_url || '{{ route("surveys.unavailable") }}';
+                }
+            })
+            .catch(error => {
+                console.error('Error al asignar token:', error);
+                // En caso de error, redirigir sin token
+                @if(isset($groupSlug))
+                window.location.href = '{{ route("surveys.show.group", ["groupSlug" => $groupSlug, "publicSlug" => $publicSlug]) }}';
+                @else
+                window.location.href = '{{ route("surveys.show", ["publicSlug" => $publicSlug]) }}';
+                @endif
             });
-        });
+        }
+
+        // Intentar generar huella digital del dispositivo
+        try {
+            console.log('Cargando FingerprintJS...');
+            FingerprintJS.load()
+                .then(fp => {
+                    console.log('FingerprintJS cargado, obteniendo fingerprint...');
+                    return fp.get();
+                })
+                .then(result => {
+                    console.log('Fingerprint obtenido:', result.visitorId);
+                    // Esperar 1 segundo antes de asignar el token
+                    setTimeout(() => assignToken(result.visitorId), 1000);
+                })
+                .catch(error => {
+                    console.error('Error al generar fingerprint:', error);
+                    // Si falla FingerprintJS, continuar sin fingerprint después de 1 segundo
+                    setTimeout(() => assignToken(null), 1000);
+                });
+        } catch (error) {
+            console.error('Error al cargar FingerprintJS:', error);
+            // Si falla completamente, continuar sin fingerprint después de 1 segundo
+            setTimeout(() => assignToken(null), 1000);
+        }
     </script>
 </body>
 </html>
