@@ -27,6 +27,10 @@ Route::get('/t/{groupSlug}/{publicSlug}', [TokenRedirectController::class, 'redi
 Route::post('/api/assign-token/{publicSlug}', [TokenRedirectController::class, 'assignToken'])->name('api.assign-token');
 
 // Rutas públicas de encuestas (usando public_slug ofuscado)
+Route::get('/surveys/unavailable', function () {
+    return view('surveys.unavailable');
+})->name('surveys.unavailable');
+
 Route::get('/survey/{publicSlug}', [SurveyController::class, 'show'])->name('surveys.show');
 Route::post('/survey/{publicSlug}/vote', [SurveyController::class, 'vote'])
     ->middleware('prevent.duplicate.vote')
