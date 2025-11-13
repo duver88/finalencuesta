@@ -11,6 +11,89 @@ class TokenRedirectController extends Controller
 {
     public function redirect(Request $request, string $publicSlug)
     {
+        // ========================================================================
+        // DETECCIÓN DE BOTS DE REDES SOCIALES (Facebook, Twitter, etc.)
+        // Estos bots hacen scraping para generar previews y NO deben consumir tokens
+        // ========================================================================
+        $userAgent = $request->userAgent();
+
+        // Lista expandida de bots de redes sociales
+        $socialMediaBots = [
+            // Facebook bots (IMPORTANTE: para anuncios de Facebook)
+            'facebookexternalhit',      // Bot principal de Facebook para previews
+            'FacebookExternalHit',      // Variante con mayúsculas
+            'facebookcatalog',          // Bot de catálogo de Facebook (para anuncios)
+            'Facebot',                  // Otro bot de Facebook
+            'meta-externalagent',       // Meta (Facebook) external agent
+            'facebookplatform',         // Plataforma de Facebook
+            'facebook',                 // Fallback para cualquier bot de Facebook
+
+            // WhatsApp (propiedad de Meta/Facebook)
+            'WhatsApp',
+
+            // Twitter/X
+            'Twitterbot',
+            'TwitterBot',
+
+            // LinkedIn
+            'LinkedInBot',
+            'linkedin',
+
+            // Telegram
+            'TelegramBot',
+            'Telegram',
+
+            // Otros bots de redes sociales
+            'Slackbot',
+            'Slack-ImgProxy',
+            'Discordbot',
+            'Discord',
+            'Pinterestbot',
+            'Instagram',
+            'SkypeUriPreview',
+            'vkShare',
+            'VK ',
+            'reddit',
+            'Snapchat',
+        ];
+
+        $isSocialMediaBot = false;
+        $detectedBot = null;
+
+        foreach ($socialMediaBots as $botName) {
+            if (stripos($userAgent, $botName) !== false) {
+                $isSocialMediaBot = true;
+                $detectedBot = $botName;
+                break;
+            }
+        }
+
+        // Si es un bot de redes sociales, redirigir SIN asignar token
+        if ($isSocialMediaBot) {
+            // Log para debugging (útil para ver qué bots están accediendo)
+            \Log::info('Bot de red social detectado', [
+                'bot' => $detectedBot,
+                'user_agent' => $userAgent,
+                'slug' => $publicSlug,
+                'ip' => $request->ip()
+            ]);
+
+            // Buscar la encuesta para obtener el slug real
+            $survey = Survey::where('public_slug', $publicSlug)->with('group')->firstOrFail();
+
+            // Redirigir directamente a la encuesta sin token (solo para preview)
+            return redirect()->route('surveys.show', ['publicSlug' => $publicSlug]);
+        }
+
+        // Para usuarios reales, mostrar página de carga intermedia
+        // Esta página esperará 1 segundo antes de asignar el token
+        return view('surveys.token-loading', [
+            'publicSlug' => $publicSlug
+        ]);
+
+        // NOTA: El código siguiente ya NO se ejecutará directamente
+        // Se ejecutará a través del método assignToken() después del delay
+
         // Buscar encuesta por public_slug (ofuscado)
         $survey = Survey::where('public_slug', $publicSlug)->with('group')->firstOrFail();
 
@@ -145,6 +228,88 @@ class TokenRedirectController extends Controller
      */
     public function redirectWithGroup(Request $request, string $groupSlug, string $publicSlug)
     {
+        // ========================================================================
+        // DETECCIÓN DE BOTS DE REDES SOCIALES (Facebook, Twitter, etc.)
+        // ========================================================================
+        $userAgent = $request->userAgent();
+
+        // Lista expandida de bots de redes sociales
+        $socialMediaBots = [
+            // Facebook bots (IMPORTANTE: para anuncios de Facebook)
+            'facebookexternalhit',
+            'FacebookExternalHit',
+            'facebookcatalog',
+            'Facebot',
+            'meta-externalagent',
+            'facebookplatform',
+            'facebook',
+
+            // WhatsApp
+            'WhatsApp',
+
+            // Twitter/X
+            'Twitterbot',
+            'TwitterBot',
+
+            // LinkedIn
+            'LinkedInBot',
+            'linkedin',
+
+            // Telegram
+            'TelegramBot',
+            'Telegram',
+
+            // Otros
+            'Slackbot',
+            'Slack-ImgProxy',
+            'Discordbot',
+            'Discord',
+            'Pinterestbot',
+            'Instagram',
+            'SkypeUriPreview',
+            'vkShare',
+            'VK ',
+            'reddit',
+            'Snapchat',
+        ];
+
+        $isSocialMediaBot = false;
+        $detectedBot = null;
+
+        foreach ($socialMediaBots as $botName) {
+            if (stripos($userAgent, $botName) !== false) {
+                $isSocialMediaBot = true;
+                $detectedBot = $botName;
+                break;
+            }
+        }
+
+        // Si es un bot de redes sociales, redirigir SIN asignar token
+        if ($isSocialMediaBot) {
+            // Log para debugging
+            \Log::info('Bot de red social detectado (grupo)', [
+                'bot' => $detectedBot,
+                'user_agent' => $userAgent,
+                'group' => $groupSlug,
+                'slug' => $publicSlug,
+                'ip' => $request->ip()
+            ]);
+
+            return redirect()->route('surveys.show.group', [
+                'groupSlug' => $groupSlug,
+                'publicSlug' => $publicSlug
+            ]);
+        }
+
+        // Para usuarios reales, mostrar página de carga intermedia
+        return view('surveys.token-loading', [
+            'publicSlug' => $publicSlug,
+            'groupSlug' => $groupSlug
+        ]);
+
+        // NOTA: El código siguiente ya NO se ejecutará directamente
+        // Se ejecutará a través del método assignToken() después del delay
+
         // Buscar el grupo por slug
         $group = \App\Models\SurveyGroup::where('slug', $groupSlug)->firstOrFail();
 
@@ -280,5 +445,228 @@ class TokenRedirectController extends Controller
             ->where('votes.user_agent', 'LIKE', '%' . substr($userAgent, 0, 50) . '%')
             ->select('votes.*')
             ->first();
+    }
+
+    /**
+     * API: Asignar token después del delay de 1 segundo
+     * Este método se llama desde JavaScript después de mostrar la página de carga
+     */
+    public function assignToken(Request $request, string $publicSlug)
+    {
+        $groupSlug = $request->input('groupSlug');
+
+        // Si tiene grupo, usar la lógica de grupo
+        if ($groupSlug) {
+            return $this->assignTokenWithGroup($request, $groupSlug, $publicSlug);
+        }
+
+        // Buscar encuesta por public_slug
+        $survey = Survey::where('public_slug', $publicSlug)->with('group')->firstOrFail();
+
+        // Si la encuesta pertenece a un grupo, redirigir a la ruta con grupo
+        if ($survey->survey_group_id && $survey->group && $survey->group->slug) {
+            return response()->json([
+                'success' => true,
+                'redirect_url' => route('token.redirect.group', [
+                    'groupSlug' => $survey->group->slug,
+                    'publicSlug' => $publicSlug
+                ])
+            ]);
+        }
+
+        // Verificar si ya viene un token en la URL
+        $tokenString = $request->query('token');
+        if ($tokenString) {
+            return response()->json([
+                'success' => true,
+                'redirect_url' => route('surveys.show', [
+                    'publicSlug' => $publicSlug,
+                    'token' => $tokenString
+                ])
+            ]);
+        }
+
+        // Verificar si ya votó por fingerprint
+        $fingerprint = $request->cookie('survey_fingerprint');
+        if ($fingerprint) {
+            $previousVote = \App\Models\Vote::where('survey_id', $survey->id)
+                ->where('fingerprint', $fingerprint)
+                ->where('is_valid', true)
+                ->first();
+
+            if ($previousVote && $previousVote->survey_token_id) {
+                $usedToken = \App\Models\SurveyToken::find($previousVote->survey_token_id);
+                if ($usedToken) {
+                    return response()->json([
+                        'success' => true,
+                        'redirect_url' => route('surveys.show', [
+                            'publicSlug' => $publicSlug,
+                            'token' => $usedToken->token
+                        ])
+                    ]);
+                }
+            }
+        }
+
+        // Liberar reservas expiradas primero
+        SurveyToken::releaseExpiredReservations();
+
+        // Obtener ID de sesión única para este usuario
+        $sessionId = $request->session()->getId();
+
+        // Verificar si esta sesión ya tiene un token reservado
+        $existingReservedToken = SurveyToken::findReservedBySession($survey->id, $sessionId);
+        if ($existingReservedToken) {
+            // Ya tiene un token reservado, devolver ese mismo
+            return response()->json([
+                'success' => true,
+                'redirect_url' => route('surveys.show', [
+                    'publicSlug' => $publicSlug,
+                    'token' => $existingReservedToken->token
+                ])
+            ]);
+        }
+
+        // Asignar un nuevo token del pool y RESERVARLO por 5 minutos
+        DB::beginTransaction();
+        try {
+            // Buscar un token disponible (pending, NO reserved)
+            $token = SurveyToken::where('survey_id', $survey->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$token) {
+                DB::commit();
+                return response()->json([
+                    'success' => false,
+                    'redirect_url' => route('surveys.unavailable')
+                ]);
+            }
+
+            // RESERVAR el token para esta sesión por 5 minutos
+            $token->reserve($sessionId);
+            $token->user_agent = $request->userAgent();
+            $token->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'redirect_url' => route('surveys.show', [
+                    'publicSlug' => $publicSlug,
+                    'token' => $token->token
+                ])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'redirect_url' => route('surveys.show', ['publicSlug' => $publicSlug])
+            ]);
+        }
+    }
+
+    /**
+     * Asignar token para encuestas con grupo
+     */
+    private function assignTokenWithGroup(Request $request, string $groupSlug, string $publicSlug)
+    {
+        $group = \App\Models\SurveyGroup::where('slug', $groupSlug)->firstOrFail();
+        $survey = Survey::where('public_slug', $publicSlug)
+            ->where('survey_group_id', $group->id)
+            ->firstOrFail();
+
+        // Verificar si ya viene un token
+        $tokenString = $request->query('token');
+        if ($tokenString) {
+            return response()->json([
+                'success' => true,
+                'redirect_url' => route('surveys.show.group', [
+                    'groupSlug' => $groupSlug,
+                    'publicSlug' => $publicSlug,
+                    'token' => $tokenString
+                ])
+            ]);
+        }
+
+        // Verificar si ya votó en el grupo
+        $fingerprint = $request->cookie('survey_fingerprint');
+        if ($group->restrict_voting && $fingerprint) {
+            $usedToken = $group->getUsedTokenByFingerprint($fingerprint);
+            if ($usedToken) {
+                return response()->json([
+                    'success' => true,
+                    'redirect_url' => route('surveys.show.group', [
+                        'groupSlug' => $groupSlug,
+                        'publicSlug' => $publicSlug,
+                        'token' => $usedToken->token
+                    ])
+                ]);
+            }
+        }
+
+        // Liberar reservas expiradas primero
+        SurveyToken::releaseExpiredReservations();
+
+        // Obtener ID de sesión única para este usuario
+        $sessionId = $request->session()->getId();
+
+        // Verificar si esta sesión ya tiene un token reservado
+        $existingReservedToken = SurveyToken::findReservedBySession($survey->id, $sessionId);
+        if ($existingReservedToken) {
+            return response()->json([
+                'success' => true,
+                'redirect_url' => route('surveys.show.group', [
+                    'groupSlug' => $groupSlug,
+                    'publicSlug' => $publicSlug,
+                    'token' => $existingReservedToken->token
+                ])
+            ]);
+        }
+
+        // Asignar token del pool y RESERVARLO
+        DB::beginTransaction();
+        try {
+            $token = SurveyToken::where('survey_id', $survey->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$token) {
+                DB::commit();
+                return response()->json([
+                    'success' => false,
+                    'redirect_url' => route('surveys.unavailable')
+                ]);
+            }
+
+            // RESERVAR el token para esta sesión por 5 minutos
+            $token->reserve($sessionId);
+            $token->user_agent = $request->userAgent();
+            $token->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'redirect_url' => route('surveys.show.group', [
+                    'groupSlug' => $groupSlug,
+                    'publicSlug' => $publicSlug,
+                    'token' => $token->token
+                ])
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'redirect_url' => route('surveys.show.group', [
+                    'groupSlug' => $groupSlug,
+                    'publicSlug' => $publicSlug
+                ])
+            ]);
+        }
     }
 }

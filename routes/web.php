@@ -23,6 +23,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/t/{publicSlug}', [TokenRedirectController::class, 'redirect'])->name('token.redirect');
 Route::get('/t/{groupSlug}/{publicSlug}', [TokenRedirectController::class, 'redirectWithGroup'])->name('token.redirect.group');
 
+// API para asignar token después del delay (llamada desde JavaScript)
+Route::post('/api/assign-token/{publicSlug}', [TokenRedirectController::class, 'assignToken'])->name('api.assign-token');
+
 // Rutas públicas de encuestas (usando public_slug ofuscado)
 Route::get('/survey/{publicSlug}', [SurveyController::class, 'show'])->name('surveys.show');
 Route::post('/survey/{publicSlug}/vote', [SurveyController::class, 'vote'])

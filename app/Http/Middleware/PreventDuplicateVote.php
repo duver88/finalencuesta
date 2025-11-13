@@ -23,18 +23,63 @@ class PreventDuplicateVote
             return $next($request);
         }
 
-        $ipAddress = $request->ip();
         $fingerprint = $request->cookie('survey_fingerprint') ?? $request->input('fingerprint');
         $userAgent = $request->header('User-Agent');
 
-        // Rate limiting: máximo 3 intentos de voto por IP cada 10 minutos
-        $key = 'vote_attempt:' . $ipAddress;
-        if (RateLimiter::tooManyAttempts($key, 3)) {
-            $seconds = RateLimiter::availableIn($key);
-            return back()->with('error', 'Demasiados intentos. Por favor espera ' . ceil($seconds / 60) . ' minutos.');
+        // Permitir bots de redes sociales (para previews de Facebook, Twitter, etc.)
+        $socialMediaBots = [
+            // Facebook bots (IMPORTANTE: para anuncios de Facebook)
+            'facebookexternalhit',
+            'FacebookExternalHit',
+            'facebookcatalog',
+            'Facebot',
+            'meta-externalagent',
+            'facebookplatform',
+            'facebook',
+
+            // WhatsApp
+            'WhatsApp',
+
+            // Twitter/X
+            'Twitterbot',
+            'TwitterBot',
+
+            // LinkedIn
+            'LinkedInBot',
+            'linkedin',
+
+            // Telegram
+            'TelegramBot',
+            'Telegram',
+
+            // Otros bots de redes sociales
+            'Slackbot',
+            'Slack-ImgProxy',
+            'Discordbot',
+            'Discord',
+            'Pinterestbot',
+            'Instagram',
+            'SkypeUriPreview',
+            'vkShare',
+            'VK ',
+            'reddit',
+            'Snapchat',
+        ];
+
+        $isSocialMediaBot = false;
+        foreach ($socialMediaBots as $botName) {
+            if (stripos($userAgent, $botName) !== false) {
+                $isSocialMediaBot = true;
+                break;
+            }
         }
 
-        // Detectar bots comunes por User-Agent
+        // Si es un bot de redes sociales, permitir el acceso (para preview)
+        if ($isSocialMediaBot) {
+            return $next($request);
+        }
+
+        // Detectar bots maliciosos por User-Agent
         $botPatterns = [
             'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests',
             'postman', 'insomnia', 'http', 'scrape', 'harvest'
@@ -56,16 +101,6 @@ class PreventDuplicateVote
             abort(403, 'Acceso denegado.');
         }
 
-        // Verificar si ya votó por IP
-        $hasVotedByIp = Vote::where('survey_id', function($query) use ($surveyId) {
-            $query->select('id')
-                  ->from('surveys')
-                  ->where('slug', $surveyId)
-                  ->limit(1);
-        })
-        ->where('ip_address', $ipAddress)
-        ->exists();
-
         // Verificar si ya votó por fingerprint (si existe)
         $hasVotedByFingerprint = false;
         if ($fingerprint) {
@@ -79,9 +114,7 @@ class PreventDuplicateVote
             ->exists();
         }
 
-        if ($hasVotedByIp || $hasVotedByFingerprint) {
-            RateLimiter::hit($key, 600); // 10 minutos
-
+        if ($hasVotedByFingerprint) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Ya has votado en esta encuesta.',
@@ -91,9 +124,6 @@ class PreventDuplicateVote
 
             return redirect()->back()->with('error', 'Ya has votado en esta encuesta.');
         }
-
-        // Incrementar contador de intentos
-        RateLimiter::hit($key, 600);
 
         return $next($request);
     }
