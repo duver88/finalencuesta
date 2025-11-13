@@ -53,7 +53,11 @@ class SurveyToken extends Model
             'used_by_fingerprint' => $fingerprint,
             'user_agent' => $userAgent,
             'vote_attempts' => $this->vote_attempts + 1,
-            'last_attempt_at' => now()
+            'last_attempt_at' => now(),
+            // Limpiar campos de reserva cuando se usa el token
+            'reserved_at' => null,
+            'reserved_by_session' => null,
+            'reservation_expires_at' => null
         ]);
     }
 
@@ -65,7 +69,8 @@ class SurveyToken extends Model
 
     public function isValid(): bool
     {
-        return $this->status === 'pending';
+        // Un token es válido si está pending O reserved (aún no usado)
+        return $this->status === 'pending' || $this->status === 'reserved';
     }
 
     public function isUsed(): bool
