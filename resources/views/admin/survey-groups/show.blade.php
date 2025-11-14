@@ -14,6 +14,9 @@
             @endif
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ route('admin.reports.group', $group) }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-bar-graph"></i> Reporte Consolidado
+            </a>
             <a href="{{ url('admin/survey-groups/' . $group->id . '/edit') }}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-pencil"></i> Editar
             </a>

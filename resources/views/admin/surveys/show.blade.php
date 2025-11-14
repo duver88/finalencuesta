@@ -15,6 +15,11 @@
             @endif
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('admin.reports.survey', $survey) }}"
+               class="btn btn-sm"
+               style="background: linear-gradient(135deg, rgba(17, 153, 142, 0.15) 0%, rgba(56, 239, 125, 0.15) 100%); color: #11998e; border: 1px solid rgba(17, 153, 142, 0.3); padding: 0.5rem 0.875rem; border-radius: 8px; font-weight: 500;">
+                <i class="bi bi-file-earmark-bar-graph"></i> <span class="d-none d-md-inline">Reporte</span>
+            </a>
             <a href="{{ url('/t/' . $survey->public_slug) }}" target="_blank"
                class="btn btn-sm"
                style="background: linear-gradient(135deg, rgba(17, 153, 142, 0.15) 0%, rgba(56, 239, 125, 0.15) 100%); color: #11998e; border: 1px solid rgba(17, 153, 142, 0.3); padding: 0.5rem 0.875rem; border-radius: 8px; font-weight: 500;">

@@ -19,7 +19,7 @@
             <button onclick="window.print()" class="btn btn-success">
                 <i class="bi bi-printer"></i> Imprimir
             </button>
-            <a href="{{ route('admin.groups.index') }}" class="btn btn-outline-secondary">
+            <a href="{{ route('admin.survey-groups.index') }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Volver
             </a>
         </div>
