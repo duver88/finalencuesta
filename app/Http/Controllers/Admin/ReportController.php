@@ -65,6 +65,17 @@ class ReportController extends Controller
         // Votos no contados (duplicados o inválidos)
         $invalidVotes = $totalVotes - $validVotes;
 
+        // Votos duplicados por token (mismo token votó múltiples veces)
+        $duplicateVotes = Vote::where('survey_id', $survey->id)
+            ->whereNotNull('survey_token_id')
+            ->select('survey_token_id', DB::raw('COUNT(*) as count'))
+            ->groupBy('survey_token_id')
+            ->having('count', '>', 1)
+            ->get()
+            ->sum(function($item) {
+                return $item->count - 1; // Solo contar los duplicados, no el voto original
+            });
+
         // Tokens usados
         $usedTokens = SurveyToken::where('survey_id', $survey->id)
             ->where('status', 'used')
@@ -78,6 +89,7 @@ class ReportController extends Controller
             'total_votes' => $totalVotes,
             'valid_votes' => $validVotes,
             'invalid_votes' => $invalidVotes,
+            'duplicate_votes' => $duplicateVotes,
             'used_tokens' => $usedTokens,
             'conversion_rate' => round($conversionRate, 2),
         ];
@@ -154,6 +166,17 @@ class ReportController extends Controller
         // Votos no contados
         $invalidVotes = $totalVotes - $validVotes;
 
+        // Votos duplicados por token en todo el grupo
+        $duplicateVotes = Vote::whereIn('survey_id', $surveyIds)
+            ->whereNotNull('survey_token_id')
+            ->select('survey_token_id', DB::raw('COUNT(*) as count'))
+            ->groupBy('survey_token_id')
+            ->having('count', '>', 1)
+            ->get()
+            ->sum(function($item) {
+                return $item->count - 1; // Solo contar los duplicados, no el voto original
+            });
+
         // Tokens usados
         $usedTokens = SurveyToken::whereIn('survey_id', $surveyIds)
             ->where('status', 'used')
@@ -167,6 +190,7 @@ class ReportController extends Controller
             'total_votes' => $totalVotes,
             'valid_votes' => $validVotes,
             'invalid_votes' => $invalidVotes,
+            'duplicate_votes' => $duplicateVotes,
             'used_tokens' => $usedTokens,
             'conversion_rate' => round($conversionRate, 2),
             'total_surveys' => count($surveyIds),

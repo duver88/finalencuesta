@@ -100,6 +100,24 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
+                            <div class="bg-danger bg-opacity-10 text-danger rounded-3 p-3">
+                                <i class="bi bi-files fs-4"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1 small">Votos Duplicados</h6>
+                            <h3 class="mb-0">{{ number_format($stats['duplicate_votes']) }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
                             <div class="bg-secondary bg-opacity-10 text-secondary rounded-3 p-3">
                                 <i class="bi bi-ticket-perforated fs-4"></i>
                             </div>
