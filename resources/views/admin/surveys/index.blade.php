@@ -63,6 +63,12 @@
                                 </td>
                                 <td class="text-end" style="padding: 1rem;">
                                     <div class="d-inline-flex gap-1">
+                                        <a href="{{ route('admin.reports.survey', $survey) }}"
+                                           class="btn btn-sm"
+                                           style="background: linear-gradient(135deg, rgba(17, 153, 142, 0.15) 0%, rgba(56, 239, 125, 0.15) 100%); color: #11998e; border: 1px solid rgba(17, 153, 142, 0.3); padding: 0.5rem 0.75rem; border-radius: 8px; transition: all 0.2s;"
+                                           title="Reporte">
+                                            <i class="bi bi-file-earmark-bar-graph"></i>
+                                        </a>
                                         <a href="{{ route('admin.surveys.show', $survey) }}"
                                            class="btn btn-sm"
                                            style="background: #f1f5f9; color: #64748b; border: none; padding: 0.5rem 0.75rem; border-radius: 8px; transition: all 0.2s;"

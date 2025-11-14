@@ -53,6 +53,9 @@
                                 </td>
                                 <td style="padding: 1rem;" class="text-end">
                                     <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ route('admin.reports.group', $group) }}" class="btn btn-outline-success btn-sm">
+                                            <i class="bi bi-file-earmark-bar-graph"></i> Reporte
+                                        </a>
                                         <a href="{{ url('admin/survey-groups/' . $group->id) }}" class="btn btn-outline-primary btn-sm">
                                             <i class="bi bi-eye"></i> Ver
                                         </a>

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SurveyController as AdminSurveyController;
 use App\Http\Controllers\Admin\SurveyGroupController;
 use App\Http\Controllers\Admin\TokenController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SurveyController;
 use App\Http\Controllers\TokenRedirectController;
@@ -75,6 +76,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('survey-groups', SurveyGroupController::class);
     Route::post('/survey-groups/{group}/add-survey', [SurveyGroupController::class, 'addSurvey'])->name('survey-groups.add-survey');
     Route::delete('/survey-groups/{group}/surveys/{survey}', [SurveyGroupController::class, 'removeSurvey'])->name('survey-groups.remove-survey');
+
+    // Reportes
+    Route::get('/reports/survey/{survey}', [ReportController::class, 'surveyReport'])->name('reports.survey');
+    Route::get('/reports/group/{group}', [ReportController::class, 'groupReport'])->name('reports.group');
 });
 
 // Rutas públicas de encuestas con grupo (usando group_slug/public_slug)
