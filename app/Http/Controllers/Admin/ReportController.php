@@ -65,16 +65,15 @@ class ReportController extends Controller
         // Votos no contados (duplicados o inválidos)
         $invalidVotes = $totalVotes - $validVotes;
 
-        // Votos duplicados por token (mismo token votó múltiples veces)
+        // Votos duplicados: intentos de reutilizar tokens ya usados
+        // Contar cuántas veces se intentó votar con un token que ya estaba usado
+        $usedTokenIds = SurveyToken::where('survey_id', $survey->id)
+            ->where('status', 'used')
+            ->pluck('id');
+
         $duplicateVotes = Vote::where('survey_id', $survey->id)
-            ->whereNotNull('survey_token_id')
-            ->select('survey_token_id', DB::raw('COUNT(*) as count'))
-            ->groupBy('survey_token_id')
-            ->having('count', '>', 1)
-            ->get()
-            ->sum(function($item) {
-                return $item->count - 1; // Solo contar los duplicados, no el voto original
-            });
+            ->whereIn('survey_token_id', $usedTokenIds)
+            ->count() - $usedTokenIds->count(); // Total de intentos - votos válidos = duplicados
 
         // Tokens usados
         $usedTokens = SurveyToken::where('survey_id', $survey->id)
@@ -166,16 +165,14 @@ class ReportController extends Controller
         // Votos no contados
         $invalidVotes = $totalVotes - $validVotes;
 
-        // Votos duplicados por token en todo el grupo
+        // Votos duplicados: intentos de reutilizar tokens ya usados en todo el grupo
+        $usedTokenIds = SurveyToken::whereIn('survey_id', $surveyIds)
+            ->where('status', 'used')
+            ->pluck('id');
+
         $duplicateVotes = Vote::whereIn('survey_id', $surveyIds)
-            ->whereNotNull('survey_token_id')
-            ->select('survey_token_id', DB::raw('COUNT(*) as count'))
-            ->groupBy('survey_token_id')
-            ->having('count', '>', 1)
-            ->get()
-            ->sum(function($item) {
-                return $item->count - 1; // Solo contar los duplicados, no el voto original
-            });
+            ->whereIn('survey_token_id', $usedTokenIds)
+            ->count() - $usedTokenIds->count(); // Total de intentos - votos válidos = duplicados
 
         // Tokens usados
         $usedTokens = SurveyToken::whereIn('survey_id', $surveyIds)
